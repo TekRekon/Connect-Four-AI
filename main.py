@@ -1,17 +1,27 @@
-from discord.ext import commands
-import config
-import asyncio
 import discord
-import Board
+from discord.ext import commands
+
+import config
 
 intents = discord.Intents.default()
 intents.members = True
 
 bot = commands.Bot(command_prefix='.', intents=intents)
 
+
+#
+# bd = Board.Board('x', 'o')
+# bd.make_move(4, 2)
+# bd.make_move(4, 2)
+# bd.make_move(4, 1)
+# bd.make_move(3, 1)
+# print(bd.get_bitboard())
+
+
 @bot.event
 async def on_ready():
     print('Rigged for silent running')
+
 
 # @bot.event
 # async def on_command_error(ctx, error):

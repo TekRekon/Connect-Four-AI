@@ -1,12 +1,14 @@
 import asyncio
-from discord.ext import commands
-import ConnectFourAI
-import time
 import random
+import time
+
 import discord
-import constants as c
-import Board
 import randfacts
+from discord.ext import commands
+
+import Board
+import ConnectFourAI
+import constants as c
 
 
 class ConnectFour(commands.Cog):
@@ -45,7 +47,7 @@ class ConnectFour(commands.Cog):
         working = True
 
         if reaction.emoji == '📲':
-            depth = 10
+            depth = 8
             bot_time = 0
             p_time = 0
             turns = 0
@@ -55,7 +57,9 @@ class ConnectFour(commands.Cog):
             player_total_time = 0
             max_nodes = 0
             total_nodes = 0
+            prev_play = 0
             prev_nodes = 0
+            prev_score = 0
             p_list = [ctx.author, self.bot.user]
             emoji_list = c.emoji_list
             random.shuffle(emoji_list)
@@ -76,7 +80,7 @@ class ConnectFour(commands.Cog):
                 if p_list[curr_ind] == ctx.author:
                     embed.set_thumbnail(url=p_list[curr_ind].avatar_url)
                     embed.description = f'{p_list[curr_ind].mention}({emoji_list[curr_ind]}) Make your move \n \n' \
-                        f'I took **{bot_time}** seconds \n \n I explored **{prev_nodes}** nodes \n \n {bd.get_printable_board()}'
+                                        f'I took **{bot_time}** seconds \n \n I explored **{prev_nodes}** nodes \n \n My move score was {prev_score} \n \n My move was {c.reactions[prev_play]} \n \n {bd.get_printable_board()}'
                     await sent_embed.edit(embed=embed)
                     start = time.time()
                     reaction, user = await self.bot.wait_for('reaction_add', timeout=500.0, check=check_reaction)
@@ -93,16 +97,19 @@ class ConnectFour(commands.Cog):
                 elif p_list[curr_ind] == self.bot.user:
                     embed.set_thumbnail(url=random.choice(c.loading_gifs))
                     embed.description = f'{self.bot.user.mention}({emoji_list[curr_ind]}) is thinking... \n \n' \
-                        f'You took **{p_time}** seconds \n \n {bd.get_printable_board()}'
+                                        f'You took **{p_time}** seconds \n \n {bd.get_printable_board()}'
                     embed.set_footer(text=f'{randfacts.getFact(filter=False)}')
                     await sent_embed.edit(embed=embed)
                     start = time.time()
-                    move, nodes_explored = ConnectFourAI.find_best_move(bd=bd, bot_piece=emoji_list[curr_ind],
-                                                                        player_piece=emoji_list[1-curr_ind], depth=depth, turns=turns, ind=curr_ind)
+                    move, nodes_explored, score = ConnectFourAI.find_best_move(bd=bd, bot_piece=emoji_list[curr_ind],
+                                                                               player_piece=emoji_list[1 - curr_ind],
+                                                                               depth=depth, turns=turns, ind=curr_ind)
                     prev_nodes = nodes_explored
+                    prev_score = score
+                    prev_play = move
                     total_nodes += prev_nodes
                     if prev_nodes > max_nodes: max_nodes = prev_nodes
-                    bd.make_move(move, curr_ind+1)
+                    bd.make_move(move, curr_ind + 1)
                     end = time.time()
                     bot_time = round(end - start, 2)
                     bot_total_time += bot_time
@@ -112,7 +119,7 @@ class ConnectFour(commands.Cog):
                 # Evaluate Board #
                 turns += 1
                 bd.bitboard_to_board()
-                result =  bd.is_terminal()
+                result = bd.get_board_state()
                 if result == 'TIE':
                     embed.set_thumbnail(url=embed.Empty)
                     working = False
@@ -126,8 +133,8 @@ class ConnectFour(commands.Cog):
                     embed.set_thumbnail(url=embed.Empty)
                     working = False
                     embed.description = f'{p_list[curr_ind].mention}({emoji_list[curr_ind]}) Wins \n {p_list[1-curr_ind].mention}' \
-                        f'({emoji_list[1-curr_ind]}) Loses \n \n My longest move took **{bot_longest_time}** seconds ' \
-                        f'\n \n Your longest move took **{player_longest_time}** seconds \n \n My average turn took **{round(bot_total_time/(turns/2), 2)}** seconds \n \n Your average turn took **{round(player_total_time/(turns/2), 2)}** seconds \n \n Total nodes explored: **{total_nodes}** \n \n Max nodes explored in a turn: **{max_nodes}** \n \n Game ended in **{turns}** turns \n \n Total game time: **{player_total_time+bot_total_time}** seconds \n \n {bd.get_printable_board()}'
+                                        f'({emoji_list[1 - curr_ind]}) Loses \n \n My longest move took **{bot_longest_time}** seconds ' \
+                                        f'\n \n Your longest move took **{player_longest_time}** seconds \n \n My average turn took **{round(bot_total_time / (turns / 2), 2)}** seconds \n \n Your average turn took **{round(player_total_time / (turns / 2), 2)}** seconds \n \n Total nodes explored: **{total_nodes}** \n \n Max nodes explored in a turn: **{max_nodes}** \n \n Game ended in **{turns}** turns \n \n Total game time: **{round(player_total_time + bot_total_time, 2)}** seconds \n \n {bd.get_printable_board()}'
                     embed.set_footer(text='')
                     await sent_embed.edit(embed=embed)
                     await sent_embed.clear_reactions()
